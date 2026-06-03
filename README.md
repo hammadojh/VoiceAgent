@@ -14,13 +14,14 @@ Content sourced from the official model repo: [MisoLabsAI/MisoTTS](https://githu
 
 This is as minimal as a deploy gets — a single static file served by GitHub Pages.
 
-1. Push to the repository (or merge to `main`).
-2. The **Deploy to GitHub Pages** workflow runs automatically and enables Pages on first run.
-3. The site goes live at `https://<owner>.github.io/<repo>/`.
+1. **One-time:** in the repo, open **Settings → Pages → Build and deployment → Source** and pick **GitHub Actions**.
+2. Push to the repository (or merge to `main`).
+3. The **Deploy to GitHub Pages** workflow runs automatically and the site goes live at `https://<owner>.github.io/<repo>/` — for this repo, `https://hammadojh.github.io/VoiceAgent/`.
 
-> The workflow uses `actions/configure-pages` with `enablement: true`, so GitHub Pages
-> is turned on automatically — no manual repo settings required (assuming Actions has
-> Pages write permission for the repo).
+> The workflow tries to enable Pages itself (`actions/configure-pages` with `enablement: true`),
+> but GitHub only lets the Actions token create the Pages site when an admin has allowed it.
+> If you see `Resource not accessible by integration`, do the one-time **Source → GitHub Actions**
+> step above and re-run the workflow — every push deploys automatically after that.
 
 ## Run locally
 
