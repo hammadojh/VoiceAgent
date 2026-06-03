@@ -150,6 +150,7 @@
       <div class="nav-links">
         <a href="#model">Miso One</a>
         <a href="#features">Capabilities</a>
+        <a href="#demo">Try it</a>
         <a href="https://github.com/MisoLabsAI/MisoTTS" target="_blank" rel="noopener">GitHub</a>
         <a class="btn" href="#cta">Get early access</a>
       </div>
@@ -188,6 +189,27 @@
         <div class="stat"><h3>8B</h3><p>Parameter text-to-speech model, built for emotion</p></div>
         <div class="stat"><h3>10s</h3><p>Of audio is all it takes to clone any voice</p></div>
       </div>
+    </div>
+  </section>
+
+  <section id="demo" style="padding-top:0">
+    <div class="wrap">
+      <p class="eyebrow">Live demo</p>
+      <h2>Try Miso One</h2>
+      <p class="lead">Type a line and hear it spoken by the live model running on Modal. The first request may take a few seconds while the GPU warms up.</p>
+
+      <div class="card" style="margin-top:32px;max-width:720px">
+        <textarea id="demo-text" rows="3"
+          style="width:100%;background:#0c0a09;color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font:inherit;line-height:1.5;resize:vertical">Hello from Miso — I emote like a human and reply in 110 milliseconds.</textarea>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px">
+          <button id="demo-btn" class="btn" type="button">Generate speech</button>
+          <span id="demo-status" style="color:var(--muted);font-size:.92rem"></span>
+        </div>
+        <audio id="demo-audio" controls style="width:100%;margin-top:18px;display:none"></audio>
+      </div>
+      <p style="color:var(--muted);font-size:.82rem;margin-top:14px;max-width:720px">
+        Powered by the open <a href="https://github.com/MisoLabsAI/MisoTTS" target="_blank" rel="noopener" style="color:var(--amber-soft)">MisoTTS 8B</a> model, deployed on Modal.
+      </p>
     </div>
   </section>
 
@@ -288,6 +310,77 @@
     </div>
   </div>
 </footer>
+
+<script>
+(function () {
+  // Live Miso TTS endpoint (Modal). If your API contract differs, adjust
+  // ENDPOINT and the request body below.
+  var ENDPOINT = "https://hammado92--misotts-api-generate-speech.modal.run";
+
+  var btn = document.getElementById("demo-btn");
+  var statusEl = document.getElementById("demo-status");
+  var audio = document.getElementById("demo-audio");
+  var input = document.getElementById("demo-text");
+  if (!btn) return;
+
+  function setStatus(msg) { statusEl.textContent = msg; }
+
+  function b64ToBlob(b64, type) {
+    var bin = atob(String(b64).replace(/^data:[^,]*,/, ""));
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: type || "audio/wav" });
+  }
+
+  async function generate() {
+    var text = (input.value || "").trim();
+    if (!text) { setStatus("Type something first."); return; }
+    btn.disabled = true;
+    audio.style.display = "none";
+    setStatus("Generating… (the model may take a few seconds to warm up)");
+    try {
+      var res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text, speaker: 0, max_ms: 10000 })
+      });
+      if (!res.ok) throw new Error("Endpoint returned HTTP " + res.status);
+
+      var ct = (res.headers.get("content-type") || "").toLowerCase();
+      var url;
+      if (ct.indexOf("application/json") !== -1) {
+        var data = await res.json();
+        if (data.url || data.audio_url) {
+          url = data.url || data.audio_url;
+        } else {
+          var b64 = data.audio || data.audio_base64 || data.wav || data.data || data.b64;
+          if (!b64) throw new Error("Unrecognized JSON response: " + JSON.stringify(data).slice(0, 160));
+          url = URL.createObjectURL(b64ToBlob(b64, "audio/wav"));
+        }
+      } else {
+        // Assume the body itself is the audio file.
+        url = URL.createObjectURL(await res.blob());
+      }
+
+      audio.src = url;
+      audio.style.display = "block";
+      audio.play().catch(function () {});
+      setStatus("Done — press play if it doesn't start on its own.");
+    } catch (err) {
+      var msg = (err && err.message) ? err.message : String(err);
+      if (msg === "Failed to fetch") {
+        msg = "Couldn't reach the endpoint from the browser. This is almost always CORS — " +
+              "enable cross-origin requests on the Modal endpoint (allow this site's origin).";
+      }
+      setStatus("Error: " + msg);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  btn.addEventListener("click", generate);
+})();
+</script>
 
 </body>
 </html>
