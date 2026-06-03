@@ -339,7 +339,12 @@
     audio.style.display = "none";
     setStatus("Generating… (the model may take a few seconds to warm up)");
     try {
-      var res = await fetch(ENDPOINT, {
+      // Modal fastapi_endpoint(method="POST") reads a dict/Pydantic arg from the
+      // JSON body, but reads scalar args (text: str) from the query string even on
+      // POST. We send both so either endpoint signature works.
+      var qs = "?text=" + encodeURIComponent(text) +
+               "&speaker=0&max_ms=10000";
+      var res = await fetch(ENDPOINT + qs, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: text, speaker: 0, max_ms: 10000 })
@@ -369,8 +374,9 @@
     } catch (err) {
       var msg = (err && err.message) ? err.message : String(err);
       if (msg === "Failed to fetch") {
-        msg = "Couldn't reach the endpoint from the browser. This is almost always CORS — " +
-              "enable cross-origin requests on the Modal endpoint (allow this site's origin).";
+        msg = "Couldn't reach the endpoint. Modal's standard web endpoints have CORS " +
+              "enabled automatically, so check the endpoint is awake and the URL is correct. " +
+              "If it's a custom asgi_app, add CORSMiddleware for this site's origin.";
       }
       setStatus("Error: " + msg);
     } finally {
